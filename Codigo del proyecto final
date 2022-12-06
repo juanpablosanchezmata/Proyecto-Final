@@ -1,0 +1,95 @@
+import random
+import time
+import speech_recognition as sr
+import pyttsx3 as voz
+
+voice = voz.init()
+voices = voice.getProperty('voices')
+voice.setProperty('voice', voices[0].id)
+voice.setProperty('rate', 140)
+
+
+def say(text):
+    voice.say(text)
+    voice.runAndWait()
+
+
+def recognize_speech_from_mic(recognizer, microphone):
+
+    if not isinstance(recognizer, sr.Recognizer):
+        raise TypeError("`recognizer` debe ser `Recognizer` instance")
+
+    if not isinstance(microphone, sr.Microphone):
+        raise TypeError("`microphone` debe ser `Microphone` instance")
+
+    with microphone as source:
+        recognizer.adjust_for_ambient_noise(source)
+        audio = recognizer.listen(source)
+
+    response = {
+        "success": True,
+        "error": None,
+        "transcription": None
+    }
+
+    try:
+        response["transcription"] = recognizer.recognize_google(audio)
+    except sr.RequestError:
+        response["success"] = False
+        response["error"] = "API No Disponible"
+    except sr.UnknownValueError:
+        response["error"] = "Imposible de reconocer"
+
+    return response
+
+
+if _name_ == "_main_":
+    PALABRAS = ['Youtube','Google','Facebook','Mango',]
+    ADIVINA = 3
+    INTENTOS = 5
+
+    recognizer = sr.Recognizer()
+    microphone = sr.Microphone()
+
+    palabra = random.choice(PALABRAS)
+
+    instruciones = (
+        "Estoy pensando en una de estas palabras:\n"
+        "{palabras}\n"
+        "Tienes {n} para adivinar.\n"
+    ).format(palabras=', '.join(PALABRAS), n=ADIVINA)
+
+    print(instruciones)
+    say(instruciones)
+    time.sleep(2)
+
+    for i in range(ADIVINA):
+        for j in range(INTENTOS):
+            print('Adivina {}. Habla!'.format(i+1))
+            guess = recognize_speech_from_mic(recognizer, microphone)
+            if guess["transcription"]:
+                break
+            if not guess["success"]:
+                break
+            print("No te entendi ni vergas\n")
+
+        if guess["error"]:
+            print("ERROR: {}".format(guess["error"]))
+            break
+
+        print("Dijiste: {}".format(guess["transcription"]))
+
+        guess_is_correct = guess["transcription"].lower() == palabra.lower()
+        user_has_more_attempts = i < ADIVINA - 1
+
+        if guess_is_correct:
+            print("AHH PERRILLO! GANASTE!")
+            say("AHH PERRILLO! GANASTE!".format(palabra))
+            break
+        elif user_has_more_attempts:
+            print("Incorrecto. Intenta otra vez")
+            say("Incorrecto. Intenta otra vez.\n")
+        else:
+            print("JAJAJA ESTUPIDA JAJAJAJA!\nYo estaba pensando en '{}'.".format(palabra))
+            say("JAJAJA ESTUPIDA JAJAJAJA!\nYo estaba pensando en '{}'.".format(palabra))
+            break
